@@ -1,9 +1,11 @@
-from multiprocessing import Pool, set_start_method
+from argparse import ArgumentParser
+from multiprocessing import get_context
 from pathlib import Path
 from time import time
 
 import torch
 import numpy as np
+import pandas as pd
 from numpy.ma import masked_where
 from open3d.open3d.io import read_point_cloud
 from open3d.open3d.camera import PinholeCameraIntrinsic as PHCamIntrinsic
@@ -16,17 +18,32 @@ import bop_toolkit_lib.inout as io
 from configs import DATASET, OBJ_ID, DEVICE, NUM_PTS_PER_PATCH
 
 
-SPLIT_NAME = 'test'
-SCENE_ID_RANGE = (48, 49)
+parser = ArgumentParser(f'Create local patch pairs from {DATASET} dataset.')
+
+parser.add_argument('split_name', help='Folder name of the split.')
+parser.add_argument('--scene_id_range', help='Range of scene IDs to load.')
+parser.add_argument('--target', action='store_true', default=False,
+    help='Create from test target data.')
+
+args = parser.parse_args()
+
+IS_TARGET = args.target
+
+if not IS_TARGET:
+    SAVE_SPLIT = 'train' if 'train' in args.split_name else 'val'
+    SCENE_ID_RANGE = [int(sc_id) for sc_id in args.scene_id_range.split(',')]
+    assert len(SCENE_ID_RANGE) == 2
+else:
+    SAVE_SPLIT = 'test'
+
+DATASET_DIR = f'/home/jim/Core7/{DATASET}/{args.split_name}'
+SAVE_DIR = f'data/{DATASET}_obj_{OBJ_ID:06d}_{SAVE_SPLIT}'
 IM_SIZE = (640, 480)
 D = 172.063
 
 VOXEL_SIZE = D * 0.01
 FPS_RATIO = 0.01
 K = [(0, 0), (1, 1), (0, 2), (1, 2)]  # FX, FY, CX, CY
-
-SAVE_DIR = f'data/{DATASET}_obj_{OBJ_ID:06d}_{SPLIT_NAME.split("_")[0]}'
-DATASET_DIR = f'/home/jim/Core7/{DATASET}/{SPLIT_NAME}'
 
 
 def create_patch_pair(depth_path, mask_path, im_cam, gt, save_name, md_pcd_pts):
@@ -41,7 +58,7 @@ def create_patch_pair(depth_path, mask_path, im_cam, gt, save_name, md_pcd_pts):
     )
     img_pcd.voxel_down_sample(VOXEL_SIZE)
 
-    if np.asarray(img_pcd.points).shape[0] > 10000:
+    if np.asarray(img_pcd.points).shape[0] > 10000 or IS_TARGET:
         cam_R, cam_t = gt['cam_R_m2c'], gt['cam_t_m2c']
 
         # Select reference points on image using farthest point sampling
@@ -65,9 +82,11 @@ def create_patch_pair(depth_path, mask_path, im_cam, gt, save_name, md_pcd_pts):
         md_save_path = f'model/{save_name}'
         create_local_patches(md_pcd, md_ref_idxs, md_save_path)
 
-        return 1
+        entry = [save_name, img_ref_idxs.shape[0]]
     else:
-        return 0
+        entry = []
+
+    return entry
 
 
 def create_local_patches(pcd, ref_idxs, save_path):
@@ -113,25 +132,52 @@ def preprocess_data():
     # Parse metadata and load information of images with the target object
     img_info = []
 
-    for sc_id in range(*SCENE_ID_RANGE):
-        assert Path(f'{DATASET_DIR}/{sc_id:06d}/scene_gt.json').is_file()
-        scene_gt = io.load_scene_gt(f'{DATASET_DIR}/{sc_id:06d}/scene_gt.json')
+    if not IS_TARGET:
+        for sc_id in range(*SCENE_ID_RANGE):
+            assert Path(f'{DATASET_DIR}/{sc_id:06d}/scene_gt.json').is_file()
+            scene_gt = io.load_scene_gt(f'{DATASET_DIR}/{sc_id:06d}/scene_gt.json')
 
-        assert Path(f'{DATASET_DIR}/{sc_id:06d}/scene_camera.json').is_file()
-        scene_cam = io.load_scene_camera(f'{DATASET_DIR}/{sc_id:06d}/scene_camera.json')
+            assert Path(f'{DATASET_DIR}/{sc_id:06d}/scene_camera.json').is_file()
+            scene_cam = io.load_scene_camera(f'{DATASET_DIR}/{sc_id:06d}/scene_camera.json')
 
-        for (im_id, im_gt), im_cam in zip(scene_gt.items(), scene_cam.values()):
-            for gt_id, gt in enumerate(im_gt):
-                if int(gt['obj_id']) == OBJ_ID:
-                    assert Path(f'{DATASET_DIR}/{sc_id:06d}/depth/{im_id:06d}.png').is_file()
-                    depth_path = f'{DATASET_DIR}/{sc_id:06d}/depth/{im_id:06d}.png'
+            for (im_id, im_gt), im_cam in zip(scene_gt.items(), scene_cam.values()):
+                for gt_id, gt in enumerate(im_gt):
+                    if int(gt['obj_id']) == OBJ_ID:
+                        assert Path(f'{DATASET_DIR}/{sc_id:06d}/depth/{im_id:06d}.png').is_file()
+                        depth_path = f'{DATASET_DIR}/{sc_id:06d}/depth/{im_id:06d}.png'
 
-                    assert Path(f'{DATASET_DIR}/{sc_id:06d}/mask_visib/{im_id:06d}_{gt_id:06d}.png').is_file()
-                    mask_path = f'{DATASET_DIR}/{sc_id:06d}/mask_visib/{im_id:06d}_{gt_id:06d}.png'
+                        assert Path(f'{DATASET_DIR}/{sc_id:06d}/mask_visib/{im_id:06d}_{gt_id:06d}.png').is_file()
+                        mask_path = f'{DATASET_DIR}/{sc_id:06d}/mask_visib/{im_id:06d}_{gt_id:06d}.png'
 
-                    save_name = f'{sc_id:06d}_{im_id:06d}_{gt_id:06d}'
+                        save_name = f'{sc_id:06d}_{im_id:06d}_{gt_id:06d}'
 
-                    img_info.append([depth_path, mask_path, im_cam, gt, save_name])
+                        img_info.append([depth_path, mask_path, im_cam, gt, save_name])
+    else:
+        targets = io.load_json(f'{Path(DATASET_DIR).parent}/test_targets_bop19.json')
+        for target in targets:
+            if int(target['obj_id']) == OBJ_ID:
+                sc_id = target['scene_id']
+
+                assert Path(f'{DATASET_DIR}/{sc_id:06d}/scene_gt.json').is_file()
+                scene_gt = io.load_scene_gt(f'{DATASET_DIR}/{sc_id:06d}/scene_gt.json')
+
+                assert Path(f'{DATASET_DIR}/{sc_id:06d}/scene_camera.json').is_file()
+                scene_cam = io.load_scene_camera(f'{DATASET_DIR}/{sc_id:06d}/scene_camera.json')
+
+                im_id = int(target['im_id'])
+                im_gt, im_cam = scene_gt[im_id], scene_cam[im_id]
+
+                for gt_id, gt in enumerate(im_gt):
+                    if int(gt['obj_id']) == OBJ_ID:
+                        assert Path(f'{DATASET_DIR}/{sc_id:06d}/depth/{im_id:06d}.png').is_file()
+                        depth_path = f'{DATASET_DIR}/{sc_id:06d}/depth/{im_id:06d}.png'
+
+                        assert Path(f'{DATASET_DIR}/{sc_id:06d}/mask_visib/{im_id:06d}_{gt_id:06d}.png').is_file()
+                        mask_path = f'{DATASET_DIR}/{sc_id:06d}/mask_visib/{im_id:06d}_{gt_id:06d}.png'
+
+                        save_name = f'{sc_id:06d}_{im_id:06d}_{gt_id:06d}'
+
+                        img_info.append([depth_path, mask_path, im_cam, gt, save_name])
 
     # Read model point cloud
     model_file = f'{Path(DATASET_DIR).parent}/models/obj_{OBJ_ID:06d}.ply'
@@ -141,15 +187,23 @@ def preprocess_data():
 
     # Create point cloud from image information
     t1 = time()
-    set_start_method('spawn')
-    with Pool() as pool:
+    with get_context('spawn').Pool(8) as pool:
         jobs = [
             pool.apply_async(create_patch_pair, (*info, md_pcd_pts))
             for info in img_info
         ]
-        num_patch_pairs = sum([j.get() for j in jobs])
+
+        df = pd.DataFrame([j.get() for j in jobs]).dropna(axis=0)
+        if Path(f'{SAVE_DIR}/labels.csv').is_file():
+            old_df = pd.read_csv(f'{SAVE_DIR}/labels.csv', header=None)
+            df = pd.concat([old_df, df])
+        df.to_csv(
+            f'{SAVE_DIR}/labels.csv',
+            header=['image_filename', 'num_patches'], index=False
+        )
+
         t2 = time()
-        print(f'Created {num_patch_pairs} patch_pairs. Time elapsed: {t2 - t1 :.3f}')
+        print(f'Created patch_pairs from {len(df)} images. Time elapsed: {t2 - t1 :.3f}')
 
 
 if __name__ == '__main__':
