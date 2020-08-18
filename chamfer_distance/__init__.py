@@ -1,2 +1,2 @@
 from .chamfer_distance import ChamferDistance
-from .chamfer_loss import ChamferLoss
+from .chamfer_loss import ChamferLoss, MyChamferLoss
