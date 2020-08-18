@@ -16,25 +16,25 @@ SEED = 309805
 # Data loading configurations
 TRAIN_DS_ARGS = {
     'dataset_dir': f'{DATASET}_obj_{OBJ_ID:06d}_train',
-    'num_patches': 12800
+    'num_images': 500
 }
 TRAIN_DL_ARGS = {
-    'batch_size': 128,
+    'batch_size': 64,
     'num_workers': 8,
     'shuffle': True
 }
 
 VAL_DS_ARGS = {
-    'dataset_dir': f'{DATASET}_obj_{OBJ_ID:06d}_test',
-    'num_patches': 9600
+    'dataset_dir': f'{DATASET}_obj_{OBJ_ID:06d}_val',
+    'num_images': 500
 }
 VAL_DL_ARGS = {
-    'batch_size': 128,
+    'batch_size': 64,
     'num_workers': 8,
     'shuffle': True
 }
 
-TEST_DS_ARGS = f'{DATASET}_obj_{OBJ_ID:06d}_target'
+TEST_DS_ARGS = f'{DATASET}_obj_{OBJ_ID:06d}_test'
 TEST_DL_ARGS = {
     'batch_size': 400,
     'num_workers': 8,

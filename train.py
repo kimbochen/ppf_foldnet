@@ -26,9 +26,6 @@ def train(model, loss_func, optimizer, scheduler, data_loaders, args):
             for x_batch, y_batch in tqdm(train_dl)
         ]
 
-        # if (epoch + 1) % args.scheduler_interval == 0:
-        #     scheduler.step()
-
         print('Evaluating ...')
         model.eval()
         with torch.no_grad():

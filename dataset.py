@@ -2,39 +2,42 @@ from pathlib import Path
 
 import torch
 import numpy as np
-from open3d.open3d.geometry import KDTreeFlann, PointCloud
-from open3d.open3d.io import read_point_cloud
-from open3d.open3d.utility import Vector3dVector
-from torch_cluster import fps
+import pandas as pd
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from bop_toolkit_lib.inout import load_json
-
 
 class PPFDataset(Dataset):
-    def __init__(self, dataset_dir, num_patches):
+    def __init__(self, dataset_dir, num_images=None):
+        assert Path(f'data/{dataset_dir}/labels.csv').is_file()
+        df = pd.read_csv(f'data/{dataset_dir}/labels.csv')
+
+        if num_images == None:
+            num_images = len(df)
+        else:
+            assert num_images < len(df)
+        num_patches = pd.Series(df['num_patches'][:num_images], dtype='int32')
+        filename = pd.Series(df['filename'][:num_images])
+
+        self.filenames = [
+            f'{fname}_{i:03d}.npy'
+            for fname, imax in zip(filename, num_patches)
+            for i in range(imax)
+        ]
 
         assert Path(f'data/{dataset_dir}/image').is_dir()
-        img_dir_glob = Path(f'data/{dataset_dir}/image').glob('*.npy')
-        img_dir = list(sorted(img_dir_glob))
-
         assert Path(f'data/{dataset_dir}/model').is_dir()
-        md_dir_glob = Path(f'data/{dataset_dir}/model').glob('*.npy')
-        md_dir = list(sorted(md_dir_glob))
+        self.ds_dir = f'data/{dataset_dir}'
 
-        assert num_patches <= len(md_dir) and num_patches <= len(img_dir)
-        self.image_dir = img_dir[:num_patches]
-        self.model_dir = md_dir[:num_patches]
-        self.dataset_size = num_patches
+        self.dataset_size = len(self.filenames)
 
     def __getitem__(self, idx):
-        assert Path(self.image_dir[idx]).is_file()
-        with open(self.image_dir[idx], 'rb') as file:
+        assert Path(f'{self.ds_dir}/image/{self.filenames[idx]}').is_file()
+        with open(f'{self.ds_dir}/image/{self.filenames[idx]}', 'rb') as file:
             img_ppf = np.load(file)
 
-        assert Path(self.model_dir[idx]).is_file()
-        with open(self.model_dir[idx], 'rb') as file:
+        assert Path(f'{self.ds_dir}/model/{self.filenames[idx]}').is_file()
+        with open(f'{self.ds_dir}/model/{self.filenames[idx]}', 'rb') as file:
             md_ppf = np.load(file)
 
         return img_ppf, md_ppf
@@ -46,7 +49,7 @@ class PPFDataset(Dataset):
 if __name__ == '__main__':
     from torch.utils.data import DataLoader
 
-    train_ds = PPFDataset('ycbv_obj_000001_train', 2000)
+    train_ds = PPFDataset('ycbv_obj_000001_train', 600)
     print(train_ds.__len__())
 
     train_dl = DataLoader(train_ds, batch_size=8)

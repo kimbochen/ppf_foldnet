@@ -199,7 +199,7 @@ def preprocess_data():
             df = pd.concat([old_df, df])
         df.to_csv(
             f'{SAVE_DIR}/labels.csv',
-            header=['image_filename', 'num_patches'], index=False
+            header=['filename', 'num_patches'], index=False
         )
 
         t2 = time()

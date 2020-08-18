@@ -100,7 +100,7 @@ if __name__ == '__main__':
     from loss import ChamferLoss
     from configs import NUM_PTS_PER_PATCH, DEVICE
 
-    train_ds = PPFDataset('ycbv_obj_000001_train', 2000)
+    train_ds = PPFDataset('ycbv_obj_000001_train', 200)
     train_dl = DataLoader(train_ds, batch_size=32)
     print(f'Training set size: {train_ds.__len__()}')
 
