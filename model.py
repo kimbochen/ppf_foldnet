@@ -97,7 +97,7 @@ def mlp_block(layer_dims, C):
 if __name__ == '__main__':
     from dataset import PPFDataset
     from torch.utils.data import DataLoader
-    from chamfer_distance import ChamferLoss
+    from loss import ChamferLoss
     from configs import NUM_PTS_PER_PATCH, DEVICE
 
     train_ds = PPFDataset('ycbv_obj_000001_train', 2000)
