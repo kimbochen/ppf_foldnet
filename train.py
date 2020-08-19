@@ -81,7 +81,7 @@ if __name__ == '__main__':
     val_ds = PPFDataset(**VAL_DS_ARGS)
     val_dl = DataLoader(val_ds, **VAL_DL_ARGS)
 
-    print('Training set: {}. Validation set: {}.\n'.format(
+    print('Training set: {} Validation set: {}\n'.format(
         train_ds.__len__(), val_ds.__len__()
     ))
 
@@ -90,11 +90,9 @@ if __name__ == '__main__':
     model.apply(init_weights).to(DEVICE)
 
     loss_func = ChamferLoss()
-    optimizer = Adam(model.parameters(), **OPTIMIZER_ARGS)
+    optimizer = Adam(model.parameters(), LR)
     scheduler = OneCycleLR(
-        optimizer, max_lr=1e-2,
-        steps_per_epoch=len(train_dl),
-        epochs = TRAINER_ARGS.num_epochs
+        optimizer, MAX_LR, total_steps=len(train_dl)*TRAINER_ARGS.num_epochs
     )
 
     Path(TRAINER_ARGS.checkpoint_path).parent.mkdir(parents=True, exist_ok=True)

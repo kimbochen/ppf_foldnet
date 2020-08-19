@@ -8,7 +8,7 @@ OBJ_ID = 1
 NUM_PTS_PER_PATCH = 2048
 
 # CUDA configurations
-DEVICE = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 DEBUG = True
 SEED = 309805
 
@@ -16,20 +16,20 @@ SEED = 309805
 # Data loading configurations
 TRAIN_DS_ARGS = {
     'dataset_dir': f'{DATASET}_obj_{OBJ_ID:06d}_train',
-    'num_images': 500
+    'num_images': 60
 }
 TRAIN_DL_ARGS = {
-    'batch_size': 64,
+    'batch_size': 80,
     'num_workers': 8,
     'shuffle': True
 }
 
 VAL_DS_ARGS = {
     'dataset_dir': f'{DATASET}_obj_{OBJ_ID:06d}_val',
-    'num_images': 500
+    'num_images': 60
 }
 VAL_DL_ARGS = {
-    'batch_size': 64,
+    'batch_size': 80,
     'num_workers': 8,
     'shuffle': True
 }
@@ -46,7 +46,8 @@ TRAINER_ARGS = EasyDict({
     'num_epochs': 100,
     'scheduler_interval': 1,
     'checkpoint_epoch': 10,
-    'checkpoint_path': "checkpoints/ckpt_{DATASET}_obj_{obj_id:06d}.pth"
+    'checkpoint_path': f'checkpoints/ckpt_{DATASET}_obj_{OBJ_ID:06d}.pth'
 })
 
-OPTIMIZER_ARGS = {'lr': 1e-3}
+LR = 1e-4
+MAX_LR = 3e-2
