@@ -22,16 +22,16 @@ def train(model, loss_func, optimizer, scheduler, data_loaders, args):
         print('Training ...')
         model.train()
         train_loss = [
-            batch_forward(model, loss_func, x_batch, y_batch, optimizer, scheduler)
-            for x_batch, y_batch in tqdm(train_dl)
+            batch_forward(model, loss_func, x_batch, optimizer, scheduler)
+            for x_batch in tqdm(train_dl)
         ]
 
         print('Evaluating ...')
         model.eval()
         with torch.no_grad():
             val_loss = [
-                batch_forward(model, loss_func, x_batch, y_batch)
-                for x_batch, y_batch in tqdm(val_dl)
+                batch_forward(model, loss_func, x_batch)
+                for x_batch in tqdm(val_dl)
             ]
 
         if (epoch + 1) > args.checkpoint_epoch and mean(val_loss) < min_loss:
@@ -45,11 +45,11 @@ def train(model, loss_func, optimizer, scheduler, data_loaders, args):
         print(log)
 
 
-def batch_forward(model, loss_func, x_batch, y_batch, optimizer=None, scheduler=None):
-    x_batch, y_batch = x_batch.to(DEVICE), y_batch.to(DEVICE)
+def batch_forward(model, loss_func, x_batch, optimizer=None, scheduler=None):
+    x_batch = x_batch.to(DEVICE)
 
     pred = model(x_batch)
-    loss = loss_func(pred, y_batch)
+    loss = loss_func(pred, x_batch)
 
     if model.training:
         loss.backward()

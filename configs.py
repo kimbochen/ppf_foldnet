@@ -19,7 +19,7 @@ TRAIN_DS_ARGS = {
     'num_images': 60
 }
 TRAIN_DL_ARGS = {
-    'batch_size': 80,
+    'batch_size': 64,
     'num_workers': 8,
     'shuffle': True
 }
@@ -29,7 +29,7 @@ VAL_DS_ARGS = {
     'num_images': 60
 }
 VAL_DL_ARGS = {
-    'batch_size': 80,
+    'batch_size': 64,
     'num_workers': 8,
     'shuffle': True
 }
