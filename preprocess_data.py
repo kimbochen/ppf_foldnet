@@ -42,7 +42,8 @@ IM_SIZE = (640, 480)
 D = 172.063
 
 VOXEL_SIZE = D * 0.01
-FPS_RATIO = 0.01
+FPS_RATIO = 0.0017                  # 16 / 8955
+PCD_PTS_RANGE = range(8955, 10946)  # 9951 +- 10%
 K = [(0, 0), (1, 1), (0, 2), (1, 2)]  # FX, FY, CX, CY
 
 
@@ -58,7 +59,7 @@ def create_patch_pair(depth_path, mask_path, im_cam, gt, save_name, md_pcd_pts):
     )
     img_pcd.voxel_down_sample(VOXEL_SIZE)
 
-    if np.asarray(img_pcd.points).shape[0] > 10000 or IS_TARGET:
+    if np.asarray(img_pcd.points).shape[0] in PCD_PTS_RANGE or IS_TARGET:
         cam_R, cam_t = gt['cam_R_m2c'], gt['cam_t_m2c']
 
         # Select reference points on image using farthest point sampling
@@ -67,7 +68,7 @@ def create_patch_pair(depth_path, mask_path, im_cam, gt, save_name, md_pcd_pts):
 
         # Calculate model reference points
         img_ref_pts = np.asarray(img_pcd.points)[img_ref_idxs]
-        md_ref_pts = (img_ref_pts - cam_t.T) @ np.linalg.inv(cam_R)
+        md_ref_pts = (img_ref_pts - cam_t.T) @ np.linalg.inv(cam_R).T
 
         # Recreate model point cloud
         md_ref_idxs = np.arange(md_ref_pts.shape[0])

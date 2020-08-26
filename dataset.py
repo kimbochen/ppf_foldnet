@@ -81,12 +81,25 @@ class PPFPairDataset(Dataset):
 
 
 if __name__ == '__main__':
+    from statistics import mean, median, stdev
     from torch.utils.data import DataLoader
+    from tqdm import tqdm
+    from configs import DEVICE
 
-    train_ds = PPFDataset('ycbv_obj_000001_train', 50)
-    train_dl = DataLoader(train_ds, batch_size=200)
+    train_ds = PPFPairDataset('ycbv_obj_000001_train', 50)
+    train_dl = DataLoader(train_ds, batch_size=1)
     print(f'Training set size: {train_ds.__len__()}')
 
-    x = next(iter(train_dl))
-    print(x.size())
+    x, y = next(iter(train_dl))
+    print(x[0, :5, :], y[0, :5, :], sep='\n')
+    print(x.size(), y.size())
 
+    loss_func = torch.nn.CosineSimilarity(dim=0)
+    loss = loss_func(x, y) 
+    print(loss.size(), loss, sep='\n')
+
+    # losses = [
+    #     torch.sum(loss_func(x.to(DEVICE), y.to(DEVICE))).item()
+    #     for x, y in tqdm(train_dl)
+    # ]
+    # print(f'Mean: {mean(losses):.3f} / Median: {median(losses):.3f} / Stdev: {stdev(losses):.3f}')
